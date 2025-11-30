@@ -1,6 +1,21 @@
-import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from "discord.js";
 import { getUserKey } from "../storage.js";
 import { getAccount, getGuildInfo, getCharacters } from "../gw2Api.js";
+
+function pickMainGuild(guilds) {
+  if (!guilds || !guilds.length) return null;
+
+  const preferredTags = ["KKev"];           // <- hier kannst du später deine Tags ändern
+  const preferredNames = ["Käsekuchen Ev"]; // <- oder Namen ändern
+
+  let main =
+    guilds.find(g => preferredTags.includes(g.tag)) ||
+    guilds.find(g => preferredNames.includes(g.name));
+
+  if (main) return main;
+
+  return [...guilds].sort((a, b) => (b.level ?? 0) - (a.level ?? 0))[0];
+}
 
 export const data = new SlashCommandBuilder()
   .setName("profile")
@@ -11,12 +26,12 @@ export async function execute(interaction) {
   if (!apiKey) {
     await interaction.reply({
       content: "Du hast noch keinen API-Key verknüpft. Nutze zuerst `/linkaccount`.",
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
     return;
   }
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
     const [account, guilds, chars] = await Promise.all([
@@ -25,7 +40,7 @@ export async function execute(interaction) {
       getCharacters(apiKey)
     ]);
 
-    const mainGuild = guilds[0];
+    const mainGuild = pickMainGuild(guilds);
 
     const embed = new EmbedBuilder()
       .setTitle(`🧙 Profil von ${account.name}`)
@@ -75,8 +90,6 @@ export async function execute(interaction) {
     await interaction.editReply({ embeds: [embed] });
   } catch (err) {
     console.error(err);
-    await interaction.editReply(
-      "❌ Fehler beim Abrufen deines Profils. Bitte prüfe deinen API-Key."
-    );
+    await interaction.editReply("❌ Fehler beim Abrufen deines Profils. Bitte prüfe deinen API-Key.");
   }
 }

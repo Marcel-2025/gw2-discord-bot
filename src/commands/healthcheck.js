@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from "discord.js";
 import fetch from "node-fetch";
 import config from "../configLoader.js";
 import { getUserKey } from "../storage.js";
@@ -6,14 +6,13 @@ import { getAccount } from "../gw2Api.js";
 
 export const data = new SlashCommandBuilder()
   .setName("healthcheck")
-  .setDescription("Prüft Bot-, Railway- und GW2-API-Status.");
+  .setDescription("Prüft Bot-, Umgebung- und GW2-API-Status.");
 
 export async function execute(interaction) {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const wsPing = interaction.client.ws.ping;
 
-  // Erkennen, ob wir auf Railway laufen
   const onRailway =
     !!process.env.RAILWAY_ENVIRONMENT ||
     !!process.env.RAILWAY_PROJECT_ID ||
@@ -21,7 +20,6 @@ export async function execute(interaction) {
 
   const runtimeEnv = onRailway ? "Railway" : "Lokal";
 
-  // 1) Public GW2 API Check
   const gw2Base = config.gw2ApiBase || "https://api.guildwars2.com";
   let gw2ApiOk = false;
   let gw2ApiLatency = null;
@@ -31,11 +29,10 @@ export async function execute(interaction) {
     const res = await fetch(`${gw2Base}/v2/build`);
     gw2ApiLatency = Date.now() - start;
     gw2ApiOk = res.ok;
-  } catch (e) {
+  } catch {
     gw2ApiOk = false;
   }
 
-  // 2) Optional: Account-API-Key testen, falls verknüpft
   const apiKey = getUserKey(interaction.user.id);
   let accountApiOk = null;
 
@@ -43,10 +40,14 @@ export async function execute(interaction) {
     try {
       await getAccount(apiKey);
       accountApiOk = true;
-    } catch (e) {
+    } catch {
       accountApiOk = false;
     }
   }
+
+  const discordTokenSource = process.env.DISCORD_TOKEN
+    ? "ENV-Variable"
+    : "config.json";
 
   const embed = new EmbedBuilder()
     .setTitle("🩺 Healthcheck")
@@ -56,22 +57,19 @@ export async function execute(interaction) {
         name: "🤖 Discord",
         value:
           `Status: **online**\n` +
-          `WebSocket-Ping: **${wsPing}ms**`,
-        inline: false
+          `WebSocket-Ping: **${wsPing}ms**`
       },
       {
         name: "🖥 Laufzeit-Umgebung",
         value:
           `Modus: **${runtimeEnv}**\n` +
-          `GW2 API Base: \`${gw2Base}\``,
-        inline: false
+          `GW2 API Base: \`${gw2Base}\``
       },
       {
         name: "🌐 GW2 Public API",
         value: gw2ApiOk
           ? `✅ Erreichbar\nLatenz: **${gw2ApiLatency}ms**`
-          : "❌ Keine Verbindung zur GW2 Public API",
-        inline: false
+          : "❌ Keine Verbindung zur GW2 Public API"
       },
       {
         name: "🔐 Dein GW2 Account-API-Key",
@@ -82,8 +80,14 @@ export async function execute(interaction) {
               ? "✅ Account-API abrufbar."
               : accountApiOk === false
                 ? "❌ Fehler beim Abrufen deines Accounts (API-Key prüfen?)."
-                : "ℹ️ Kein Status verfügbar.",
-        inline: false
+                : "ℹ️ Kein Status verfügbar."
+      },
+      {
+        name: "⚙ Konfigurationsquelle",
+        value:
+          `discordToken: **${discordTokenSource}**\n` +
+          `clientId: \`${config.clientId || "nicht gesetzt"}\`\n` +
+          `guildId: \`${config.guildId || "nicht gesetzt"}\``
       }
     )
     .setColor(0x00aeff)

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from "discord.js";
 import { getUserKey } from "../storage.js";
 import { getGuildInfo } from "../gw2Api.js";
 
@@ -11,12 +11,12 @@ export async function execute(interaction) {
   if (!apiKey) {
     await interaction.reply({
       content: "Du hast noch keinen API-Key verknüpft. Nutze zuerst `/linkaccount`.",
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
     return;
   }
 
-  await interaction.deferReply();
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
     const guilds = await getGuildInfo(apiKey);
@@ -26,18 +26,20 @@ export async function execute(interaction) {
       return;
     }
 
-    const embed = new EmbedBuilder().setTitle("Deine Gilden");
+    const embed = new EmbedBuilder()
+      .setTitle("🏰 Deine Gilden")
+      .setColor(0x3498db);
 
     guilds.forEach(g => {
       embed.addFields({
         name: `${g.name} [${g.tag}]`,
-        value: `Level: ${g.level}\nID: ${g.id}`
+        value: `Level: **${g.level ?? "?"}**\nID: \`${g.id}\``
       });
     });
 
     await interaction.editReply({ embeds: [embed] });
-  } catch (e) {
-    console.error(e);
-    await interaction.editReply("Fehler beim Abrufen deiner Gildeninformationen.");
+  } catch (err) {
+    console.error(err);
+    await interaction.editReply("❌ Fehler beim Abrufen der Gildeninformationen.");
   }
 }

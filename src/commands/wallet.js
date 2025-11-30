@@ -1,18 +1,51 @@
-import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from "discord.js";
 import { getUserKey } from "../storage.js";
 import { getWallet } from "../gw2Api.js";
 
-export const data = new SlashCommandBuilder().setName("wallet").setDescription("Währungen anzeigen");
+export const data = new SlashCommandBuilder()
+  .setName("wallet")
+  .setDescription("Zeigt wichtige Währungen deines Accounts an.");
 
-const CUR = {1:"Karma",2:"Laurels",3:"Badges",4:"Spirit Shards",6:"Gems"};
+const CURRENCY_LABELS = {
+  1: "Karma",
+  2: "Laurels",
+  3: "WvW-Marken",
+  4: "Geistes-Scherben",
+  5: "Gold",
+  6: "Edelsteine"
+};
 
 export async function execute(interaction) {
-  const key = getUserKey(interaction.user.id);
-  if (!key) return interaction.reply({ content:"Bitte /linkaccount.", ephemeral:true});
-  await interaction.deferReply();
+  const apiKey = getUserKey(interaction.user.id);
+  if (!apiKey) {
+    await interaction.reply({
+      content: "Du hast noch keinen API-Key verknüpft. Nutze zuerst `/linkaccount`.",
+      flags: MessageFlags.Ephemeral
+    });
+    return;
+  }
 
-  const wallet = await getWallet(key);
-  const lines = wallet.filter(c=>CUR[c.id]).map(c=>`• **${CUR[c.id]}**: ${c.value}`);
-  const embed = new EmbedBuilder().setTitle("Wallet").setDescription(lines.join("\n"));
-  await interaction.editReply({ embeds:[embed] });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  try {
+    const wallet = await getWallet(apiKey);
+
+    const lines = wallet
+      .filter(c => CURRENCY_LABELS[c.id])
+      .map(c => `• **${CURRENCY_LABELS[c.id]}**: ${c.value.toLocaleString("de-DE")}`);
+
+    const embed = new EmbedBuilder()
+      .setTitle("💰 Wallet")
+      .setDescription(
+        lines.length
+          ? lines.join("\n")
+          : "Es konnten keine unterstützten Währungen gefunden werden."
+      )
+      .setColor(0xf1c40f);
+
+    await interaction.editReply({ embeds: [embed] });
+  } catch (err) {
+    console.error(err);
+    await interaction.editReply("❌ Fehler beim Abrufen deiner Wallet.");
+  }
 }
