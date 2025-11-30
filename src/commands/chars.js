@@ -1,43 +1,30 @@
-import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from "discord.js";
+import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
 import { getUserKey } from "../storage.js";
 import { getCharacters } from "../gw2Api.js";
 
 export const data = new SlashCommandBuilder()
   .setName("chars")
-  .setDescription("Listet deine Charaktere (max. 15).");
+  .setDescription("Listet deine Charaktere (max. 10).");
 
 export async function execute(interaction) {
-  const apiKey = getUserKey(interaction.user.id);
-  if (!apiKey) {
+  const key = await getUserKey(interaction.user.id);
+  if (!key) {
     await interaction.reply({
       content: "Du hast noch keinen API-Key verknüpft. Nutze zuerst `/linkaccount`.",
-      flags: MessageFlags.Ephemeral
+      ephemeral: true
     });
     return;
   }
 
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  await interaction.deferReply({ ephemeral: true });
 
   try {
-    const chars = await getCharacters(apiKey);
-
-    if (!chars.length) {
-      await interaction.editReply("Ich habe keine Charaktere gefunden.");
-      return;
-    }
-
-    const lines = chars.slice(0, 15).map(c => {
-      const lvl = c.level ?? "?";
-      const prof = c.profession ?? "Unbekannt";
-      const race = c.race ?? "Unbekannt";
-      return `• **${c.name}** – ${prof} (${race}, Stufe ${lvl})`;
-    });
+    const chars = await getCharacters(key);
+    const lines = chars.slice(0, 10).map(c => `• **${c.name}** – ${c.profession} (${c.level})`);
 
     const embed = new EmbedBuilder()
       .setTitle("👥 Deine Charaktere")
-      .setDescription(lines.join("\n"))
-      .setFooter({ text: `Insgesamt: ${chars.length} Charakter(e)` })
-      .setColor(0x9b59b6);
+      .setDescription(lines.join("\n") || "Keine Charaktere gefunden.");
 
     await interaction.editReply({ embeds: [embed] });
   } catch (err) {

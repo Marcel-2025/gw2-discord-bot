@@ -15,7 +15,7 @@ export async function execute(interaction) {
 
   if (key.length < 30) {
     await interaction.reply({
-      content: "Der API-Key wirkt zu kurz, bitte prüfe ihn nochmal.",
+      content: "Der API-Key sieht sehr kurz aus, bitte prüfe ihn nochmal.",
       ephemeral: true
     });
     return;
@@ -24,7 +24,7 @@ export async function execute(interaction) {
   await setUserKey(interaction.user.id, key);
 
   await interaction.reply({
-    content: "✅ API-Key gespeichert!",
+    content: "✅ Dein GW2 API-Key wurde gespeichert!",
     ephemeral: true
   });
 }

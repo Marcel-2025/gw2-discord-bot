@@ -1,47 +1,40 @@
-import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from "discord.js";
+import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
 import { getUserKey } from "../storage.js";
 import { getWallet } from "../gw2Api.js";
 
-export const data = new SlashCommandBuilder()
-  .setName("wallet")
-  .setDescription("Zeigt wichtige Währungen deines Accounts an.");
-
-const CURRENCY_LABELS = {
+const CUR = {
   1: "Karma",
   2: "Laurels",
-  3: "WvW-Marken",
-  4: "Geistes-Scherben",
-  5: "Gold",
-  6: "Edelsteine"
+  3: "Badges of Honor",
+  4: "Geistersplitter",
+  6: "Gems"
 };
 
+export const data = new SlashCommandBuilder()
+  .setName("wallet")
+  .setDescription("Zeigt wichtige Währungen an.");
+
 export async function execute(interaction) {
-  const apiKey = getUserKey(interaction.user.id);
-  if (!apiKey) {
+  const key = await getUserKey(interaction.user.id);
+  if (!key) {
     await interaction.reply({
       content: "Du hast noch keinen API-Key verknüpft. Nutze zuerst `/linkaccount`.",
-      flags: MessageFlags.Ephemeral
+      ephemeral: true
     });
     return;
   }
 
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  await interaction.deferReply({ ephemeral: true });
 
   try {
-    const wallet = await getWallet(apiKey);
-
+    const wallet = await getWallet(key);
     const lines = wallet
-      .filter(c => CURRENCY_LABELS[c.id])
-      .map(c => `• **${CURRENCY_LABELS[c.id]}**: ${c.value.toLocaleString("de-DE")}`);
+      .filter(c => CUR[c.id])
+      .map(c => `• **${CUR[c.id]}**: ${c.value}`);
 
     const embed = new EmbedBuilder()
       .setTitle("💰 Wallet")
-      .setDescription(
-        lines.length
-          ? lines.join("\n")
-          : "Es konnten keine unterstützten Währungen gefunden werden."
-      )
-      .setColor(0xf1c40f);
+      .setDescription(lines.join("\n") || "Keine passenden Währungen gefunden.");
 
     await interaction.editReply({ embeds: [embed] });
   } catch (err) {
