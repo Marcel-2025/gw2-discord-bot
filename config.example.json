@@ -1,0 +1,6 @@
+{
+  "discordToken": "DISCORD_BOT_TOKEN_HERE",
+  "clientId": "DISCORD_APPLICATION_CLIENT_ID",
+  "guildId": "OPTIONAL_TEST_GUILD_ID",
+  "gw2ApiBase": "https://api.guildwars2.com"
+}
