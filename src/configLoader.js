@@ -3,11 +3,12 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const configPath = path.join(__dirname, "..", "config.json");
-
-const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+const config = {
+  discordToken: process.env.DISCORD_TOKEN,
+  clientId: process.env.CLIENT_ID,
+  guildId: process.env.GUILD_ID,
+  gw2ApiBase: process.env.GW2_API_BASE || "https://api.guildwars2.com"
+};
 
 export default config;
+
